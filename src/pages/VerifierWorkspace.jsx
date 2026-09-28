@@ -107,7 +107,12 @@ export default function VerifierWorkspace() {
       {reworkNote && (
         <div className="bg-rose-50 border border-rose-200 rounded-xl p-4 mb-4">
           <div className="text-xs font-medium text-rose-700 mb-1">
-            Sent back for rework
+            <p className="text-black text-sm">
+              Sent back for rework{" "}
+              {reworkNote.reviewer?.name
+                ? ` by ${reworkNote.reviewer.name}`
+                : ""}
+            </p>
           </div>
           <div className="text-sm text-rose-600">{reworkNote.comments}</div>
         </div>
