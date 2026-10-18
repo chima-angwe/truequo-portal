@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import ClaimBlock from '../components/ClaimBlock';
 import api from '../api/client';
 
 export default function ReviewTask() {
@@ -33,19 +34,7 @@ export default function ReviewTask() {
         </div>
       )}
 
-      {task.claim?.length > 0 && (
-        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-4">
-          <div className="text-xs font-medium text-amber-700 mb-2">What was claimed</div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1.5">
-            {task.claim.map((c, i) => (
-              <div key={i} className="text-sm">
-                <span className="text-stone-500">{c.label}: </span>
-                <span className="text-stone-800 font-medium">{c.value || '—'}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+      <ClaimBlock task={task} title="What was claimed" />
 
       {checklistTotal > 0 && (
         <div className="bg-white border border-stone-200 rounded-xl p-4 mb-4">

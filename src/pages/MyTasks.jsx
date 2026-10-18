@@ -2,6 +2,10 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../api/client';
 
+function headline(t) {
+  return (t.claim || []).map((c) => c.value).filter(Boolean).slice(0, 2).join(' · ');
+}
+
 export default function MyTasks() {
   const [tasks, setTasks] = useState([]);
 
@@ -24,6 +28,7 @@ export default function MyTasks() {
               <div>
                 <div className="font-medium text-sm">{t.case?.candidate?.name}</div>
                 <div className="text-xs text-stone-400 capitalize mt-0.5">{t.type} verification — {t.case?.client?.name}</div>
+                {headline(t) && <div className="text-xs text-stone-600 mt-1">{headline(t)}</div>}
               </div>
               <div className="text-xs text-stone-400">
                 Due {t.case?.dueDate ? new Date(t.case.dueDate).toLocaleDateString() : '—'}

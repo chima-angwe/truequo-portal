@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import ClaimBlock from "../components/ClaimBlock";
 import api from "../api/client";
 
 export default function VerifierWorkspace() {
@@ -77,42 +78,25 @@ export default function VerifierWorkspace() {
       <h1 className="font-serif italic text-2xl mb-1">
         Verification Workspace
       </h1>
-      <div className="mb-6">
-        <p className="text-sm font-medium text-ink">
-          {task.case?.candidate?.name} — {task.case?.client?.name}
-        </p>
-        <p className="text-stone-500 text-sm capitalize">
-          {task.type} verification · {task.case?.caseNumber}
-        </p>
-      </div>
+      <p className="text-sm font-medium text-ink">
+        {task.case?.candidate?.name}
+        {task.case?.client?.name ? ` — ${task.case.client.name}` : ""}
+      </p>
+      <p className="text-stone-500 text-sm mb-6 capitalize">
+        {task.type} verification
+        {task.case?.caseNumber ? ` · ${task.case.caseNumber}` : ""}
+      </p>
 
-      {task.claim?.length > 0 && (
-        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-4">
-          <div className="text-xs font-medium text-amber-700 mb-2">
-            What was claimed — check this against what you find
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1.5">
-            {task.claim.map((c, i) => (
-              <div key={i} className="text-sm">
-                <span className="text-stone-500">{c.label}: </span>
-                <span className="text-stone-800 font-medium">
-                  {c.value || "—"}
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+      <ClaimBlock
+        task={task}
+        title="What was claimed — check this against what you find"
+      />
 
       {reworkNote && (
         <div className="bg-rose-50 border border-rose-200 rounded-xl p-4 mb-4">
           <div className="text-xs font-medium text-rose-700 mb-1">
-            <p className="text-black text-sm">
-              Sent back for rework{" "}
-              {reworkNote.reviewer?.name
-                ? ` by ${reworkNote.reviewer.name}`
-                : ""}
-            </p>
+            Sent back for rework
+            {reworkNote.reviewer?.name ? ` by ${reworkNote.reviewer.name}` : ""}
           </div>
           <div className="text-sm text-rose-600">{reworkNote.comments}</div>
         </div>

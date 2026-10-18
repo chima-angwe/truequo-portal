@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import api from '../api/client';
 import StatusBadge from '../components/StatusBadge';
+import ClaimBlock from '../components/ClaimBlock';
 import { useAuth } from '../context/AuthContext';
 
 const PENDING_REASONS = [
@@ -107,6 +108,8 @@ export default function CaseDetail() {
                   {actionFor(t)}
                 </div>
               </div>
+
+              <ClaimBlock task={t} />
 
               {checklistTotal > 0 && (
                 <div className="text-xs text-stone-500 mb-2">Checklist: {checklistDone}/{checklistTotal} complete</div>
