@@ -8,21 +8,22 @@ function headline(t) {
 
 export default function MyTasks() {
   const [tasks, setTasks] = useState([]);
+  const [error, setError] = useState('');
 
   useEffect(() => {
-    api.get('/tasks/my/assignments').then((res) => setTasks(res.data));
+    api.get('/tasks/my/assignments').then((res) => setTasks(res.data)).catch(() => setError('Assignments could not be loaded. Please refresh to try again.'));
   }, []);
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-2xl">
-      <h1 className="font-serif italic text-2xl mb-1">My Assignments</h1>
-      <p className="text-stone-500 text-sm mb-6">Verification tasks currently assigned to you.</p>
+      <div className="page-heading"><div className="page-heading-copy"><div className="page-eyebrow">VERIFIER WORKSPACE</div><h1 className="mt-2">My assignments</h1><p className="page-subtitle">Your assigned checks, ordered for quick review.</p></div></div>
+      {error && <div role="alert" className="empty-state">{error}</div>}
 
       <div className="space-y-3">
         {tasks.map((t) => (
           <Link
             key={t._id} to={`/tasks/${t._id}/verify`}
-            className="block bg-white border border-stone-200 rounded-xl p-4 sm:p-5 hover:border-gold transition"
+            className="data-panel block p-4 transition hover:border-gold sm:p-5"
           >
             <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
               <div>
@@ -37,7 +38,7 @@ export default function MyTasks() {
           </Link>
         ))}
         {tasks.length === 0 && (
-          <div className="text-sm text-stone-400 text-center py-12">No assignments right now.</div>
+          <div className="empty-state">No assignments right now. New work will appear here when it is assigned to you.</div>
         )}
       </div>
     </div>

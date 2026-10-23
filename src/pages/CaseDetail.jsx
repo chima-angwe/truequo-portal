@@ -77,7 +77,7 @@ export default function CaseDetail() {
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-3xl">
       <div className="mb-6">
-        <div className="text-xs text-stone-400">{c.caseNumber}</div>
+        <div className="page-eyebrow">CASE {c.caseNumber}</div>
         <h1 className="font-serif italic text-2xl mt-1">{c.candidate?.name}</h1>
         <div className="flex items-center gap-3 mt-2 flex-wrap">
           <span className="text-sm text-stone-500">{c.client?.name}</span>
@@ -144,7 +144,7 @@ export default function CaseDetail() {
               )}
 
               {openForm?.taskId === t._id && openForm.type === 'pending' && (
-                <div className="border border-stone-200 rounded-lg p-3 mb-3 space-y-2 bg-stone-50">
+                <div className="action-panel mb-3 space-y-2">
                   <select
                     value={pendingForm.reason} onChange={(e) => setPendingForm({ ...pendingForm, reason: e.target.value })}
                     className="w-full border border-stone-300 rounded-lg px-2.5 py-1.5 text-xs"
@@ -170,7 +170,7 @@ export default function CaseDetail() {
               )}
 
               {openForm?.taskId === t._id && openForm.type === 'escalate' && (
-                <div className="border border-red-200 rounded-lg p-3 mb-3 space-y-2 bg-red-50">
+                <div className="action-panel action-panel--danger mb-3 space-y-2">
                   <input
                     placeholder="What went wrong?" value={escalateForm.description}
                     onChange={(e) => setEscalateForm({ ...escalateForm, description: e.target.value })}

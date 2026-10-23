@@ -19,8 +19,7 @@ export default function AssignTask() {
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-xl">
-      <h1 className="font-serif italic text-2xl mb-1">Assign Verification</h1>
-      <p className="text-stone-500 text-sm mb-6">Choose who will handle this verification task.</p>
+      <div className="page-heading"><div className="page-heading-copy"><div className="page-eyebrow">TEAM WORKLOAD</div><h1 className="mt-2">Assign verification</h1><p className="page-subtitle">Choose a verifier based on availability and location.</p></div></div>
 
       <div className="space-y-2 mb-6">
         {verifiers.map((v) => (

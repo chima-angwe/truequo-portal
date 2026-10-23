@@ -74,18 +74,12 @@ export default function VerifierWorkspace() {
     );
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 max-w-xl">
-      <h1 className="font-serif italic text-2xl mb-1">
-        Verification Workspace
-      </h1>
-      <p className="text-sm font-medium text-ink">
+    <div className="p-4 sm:p-6 lg:p-8 max-w-3xl">
+      <div className="page-heading"><div className="page-heading-copy"><div className="page-eyebrow">VERIFICATION WORKSPACE</div><h1 className="mt-2">{task.type} check</h1><p className="page-subtitle">
         {task.case?.candidate?.name}
         {task.case?.client?.name ? ` — ${task.case.client.name}` : ""}
-      </p>
-      <p className="text-stone-500 text-sm mb-6 capitalize">
-        {task.type} verification
         {task.case?.caseNumber ? ` · ${task.case.caseNumber}` : ""}
-      </p>
+      </p></div></div>
 
       <ClaimBlock
         task={task}

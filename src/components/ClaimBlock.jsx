@@ -17,8 +17,8 @@ export default function ClaimBlock({ task, title = 'Claimed', compact = false })
   const addressRow = task.type === 'address' ? rows.find((r) => /address/i.test(r.label)) : null;
 
   return (
-    <div className={`bg-amber-50 border border-amber-200 rounded-xl ${compact ? 'p-3' : 'p-4'} mb-3`}>
-      <div className="text-xs font-medium text-amber-700 mb-2">{title}</div>
+    <div className={`claim-block bg-amber-50 border border-amber-200 rounded-xl ${compact ? 'p-3' : 'p-4'} mb-3`}>
+      <div className="claim-title text-xs font-medium text-amber-700 mb-2">{title}</div>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1.5">
         {rows.map((c, i) => (
           <div key={i} className="text-sm">

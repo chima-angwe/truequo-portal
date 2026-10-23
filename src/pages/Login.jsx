@@ -1,53 +1,49 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import BrandWordmark from '../components/BrandMark';
 
 export default function Login() {
-  const [email, setEmail] = useState('ops@truequo.com');
-  const [password, setPassword] = useState('password123');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
 
   async function handleSubmit(e) {
-    e.preventDefault();
-    setError('');
+    e.preventDefault(); setError(''); setLoading(true);
     try {
-      await login(email, password);
-      navigate('/');
+      const user = await login(email, password);
+      navigate(user.role === 'verifier' ? '/my-tasks' : user.role === 'client' ? '/client' : '/', { replace: true });
     } catch (err) {
-      setError(err.response?.data?.error || 'Login failed');
-    }
+      setError(err.response?.data?.error || 'We could not sign you in. Check your details and try again.');
+    } finally { setLoading(false); }
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-ink px-4 py-8">
-      <div className="w-full max-w-sm">
-        <div className="text-center mb-8">
-          <div className="font-serif italic text-3xl text-paper">TrueQuo</div>
-          <div className="text-sm text-stone-400 mt-1">Verification Operations</div>
+    <main className="login-shell">
+      <section className="login-brand-panel">
+        <BrandWordmark />
+        <div className="login-brand-message">
+          <div className="eyebrow">VERIFICATION OPERATIONS</div>
+          <h1>Make every decision <span>count.</span></h1>
+          <p>One clear view of every verification, every finding, and every next step.</p>
         </div>
-        <form onSubmit={handleSubmit} className="bg-paper rounded-2xl p-6 sm:p-8 space-y-4">
-          <div>
-            <label className="text-sm font-medium text-stone-600">Email</label>
-            <input
-              type="email" value={email} onChange={(e) => setEmail(e.target.value)}
-              className="mt-1 w-full border border-stone-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold"
-            />
-          </div>
-          <div>
-            <label className="text-sm font-medium text-stone-600">Password</label>
-            <input
-              type="password" value={password} onChange={(e) => setPassword(e.target.value)}
-              className="mt-1 w-full border border-stone-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold"
-            />
-          </div>
-          {error && <div className="text-sm text-red-600">{error}</div>}
-          <button type="submit" className="w-full bg-ink text-paper rounded-lg py-2.5 text-sm font-medium hover:bg-stone-800 transition">
-            Sign in
-          </button>
+        <div className="login-brand-foot">A clearer standard for trusted work.</div>
+      </section>
+      <section className="login-form-side">
+        <form onSubmit={handleSubmit} className="login-card">
+          <div className="page-eyebrow">YOUR WORKSPACE</div>
+          <h2>Welcome back</h2>
+          <p className="login-card-intro">Sign in to continue to TrueQuo.</p>
+          <div className="login-field"><label htmlFor="email">Work email</label><input id="email" type="email" autoComplete="username" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@company.com" /></div>
+          <div className="login-field"><label htmlFor="password">Password</label><input id="password" type="password" autoComplete="current-password" required value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Enter your password" /></div>
+          {error && <div className="login-error" role="alert">{error}</div>}
+          <button type="submit" disabled={loading} className="login-submit">{loading ? 'Signing in…' : 'Sign in'}</button>
+          <div className="login-helper">Your access and workspace are based on your account role.</div>
         </form>
-      </div>
-    </div>
+      </section>
+    </main>
   );
 }

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../api/client';
+import { useAuth } from '../context/AuthContext';
 
 const CHECK_TYPES = ['employment', 'education', 'identity', 'address', 'reference'];
 
@@ -20,14 +21,20 @@ export default function NewCase() {
   const [form, setForm] = useState({ candidateName: '', candidateEmail: '', client: '', checks: [], dueDate: '' });
   const [claims, setClaims] = useState({}); // { employment: { Employer: '...', Position: '...' }, ... }
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const [error, setError] = useState('');
 
   useEffect(() => {
+    if (user?.role === 'client') {
+      setForm((f) => ({ ...f, client: user.organization || '' }));
+      return;
+    }
     api.get('/cases').then((res) => {
       const unique = new Map();
       res.data.forEach((c) => unique.set(c.client._id, c.client));
       setClients([...unique.values()]);
     });
-  }, []);
+  }, [user]);
 
   function toggleCheck(type) {
     setForm((f) => ({
@@ -45,14 +52,16 @@ export default function NewCase() {
 
   async function handleSubmit(e) {
     e.preventDefault();
-    const res = await api.post('/cases', { ...form, claims });
-    navigate(`/cases/${res.data.case._id}`);
+    try {
+      setError('');
+      const res = await api.post('/cases', { ...form, claims });
+      navigate(`/cases/${res.data.case._id}`);
+    } catch (err) { setError(err.response?.data?.error || 'Request could not be submitted. Please try again.'); }
   }
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-xl">
-      <h1 className="font-serif italic text-2xl mb-1">New Verification Request</h1>
-      <p className="text-stone-500 text-sm mb-6">Simulates a client submitting a candidate for screening.</p>
+      <div className="page-heading"><div className="page-heading-copy"><div className="page-eyebrow">CASE INTAKE</div><h1 className="mt-2">New verification request</h1><p className="page-subtitle">Add candidate details and choose the checks to complete.</p></div></div>
 
       <form onSubmit={handleSubmit} className="bg-white border border-stone-200 rounded-xl p-4 sm:p-6 space-y-4">
         <div>
@@ -71,7 +80,7 @@ export default function NewCase() {
             className="mt-1 w-full border border-stone-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold"
           />
         </div>
-        <div>
+        {user?.role !== 'client' ? <div>
           <label className="text-xs font-medium text-stone-500">Client</label>
           <select
             required value={form.client}
@@ -81,7 +90,7 @@ export default function NewCase() {
             <option value="">Select client…</option>
             {clients.map((c) => <option key={c._id} value={c._id}>{c.name}</option>)}
           </select>
-        </div>
+        </div> : <div className="rounded-lg border border-stone-200 bg-stone-50 px-3 py-2.5 text-xs text-stone-600">Requesting organization: <strong>{user?.organizationName || 'Your organization'}</strong></div>}
         <div>
           <label className="text-xs font-medium text-stone-500">Checks required</label>
           <div className="flex flex-wrap gap-2 mt-1.5">
@@ -130,6 +139,7 @@ export default function NewCase() {
             className="mt-1 w-full border border-stone-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold"
           />
         </div>
+        {error && <div role="alert" className="rounded-lg border border-red-200 bg-red-50 p-3 text-xs text-red-700">{error}</div>}
         <button
           type="submit" disabled={form.checks.length === 0}
           className="bg-ink text-paper rounded-lg px-5 py-2.5 text-sm font-medium disabled:opacity-40 hover:bg-stone-800"

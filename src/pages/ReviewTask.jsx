@@ -25,8 +25,7 @@ export default function ReviewTask() {
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-xl">
-      <h1 className="font-serif italic text-2xl mb-1">Review Verification</h1>
-      <p className="text-stone-500 text-sm mb-6 capitalize">{task.type} verification — submitted by {task.assignedTo?.name}</p>
+      <div className="page-heading"><div className="page-heading-copy"><div className="page-eyebrow">SUPERVISOR REVIEW</div><h1 className="mt-2">Review verification</h1><p className="page-subtitle capitalize">{task.type} check · submitted by {task.assignedTo?.name || 'verifier'}</p></div></div>
 
       {task.reworkCount > 0 && (
         <div className="text-xs bg-rose-50 text-rose-700 rounded-lg p-2.5 mb-4">
