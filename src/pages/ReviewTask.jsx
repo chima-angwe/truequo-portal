@@ -1,21 +1,45 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import ClaimBlock from '../components/ClaimBlock';
+import TaskDocuments from '../components/TaskDocuments';
 import api from '../api/client';
+import { useAuth } from '../context/AuthContext';
+
+function hasUnresolvedRejectedDocuments(documents = []) {
+  return documents.some((document) => {
+    if (document.reviewStatus !== 'rejected') return false;
+    let current = document;
+    const visited = new Set();
+    while (current && current.reviewStatus === 'rejected') {
+      const id = String(current._id);
+      if (visited.has(id)) return true;
+      visited.add(id);
+      current = documents.find((candidate) => String(candidate.replacementFor) === id);
+    }
+    return !current || current.reviewStatus !== 'accepted';
+  });
+}
 
 export default function ReviewTask() {
   const { taskId } = useParams();
   const [task, setTask] = useState(null);
   const [comments, setComments] = useState('');
+  const [decisionError, setDecisionError] = useState('');
   const navigate = useNavigate();
+  const { user } = useAuth();
 
   useEffect(() => {
     api.get(`/tasks/${taskId}`).then((res) => setTask(res.data));
   }, [taskId]);
 
   async function handleDecision(status) {
-    const res = await api.post(`/reviews/${taskId}`, { status, comments });
-    navigate(`/cases/${res.data.task.case}`);
+    setDecisionError('');
+    try {
+      const res = await api.post(`/reviews/${taskId}`, { status, comments });
+      navigate(`/cases/${res.data.task.case}`);
+    } catch (error) {
+      setDecisionError(error.response?.data?.error || 'Unable to save this review. Please try again.');
+    }
   }
 
   if (!task) return <div className="p-4 sm:p-6 lg:p-8 text-stone-400 text-sm">Loading…</div>;
@@ -34,6 +58,8 @@ export default function ReviewTask() {
       )}
 
       <ClaimBlock task={task} title="What was claimed" />
+
+      <TaskDocuments task={task} canReview={['operations', 'supervisor', 'admin'].includes(user?.role)} onTaskChange={setTask} />
 
       {checklistTotal > 0 && (
         <div className="bg-white border border-stone-200 rounded-xl p-4 mb-4">
@@ -65,14 +91,14 @@ export default function ReviewTask() {
         </div>
       )}
 
-      <textarea
+      {['supervisor', 'admin'].includes(user?.role) && <textarea
         value={comments} onChange={(e) => setComments(e.target.value)}
         placeholder="Review comments (optional, or required if sending back)" rows={2}
         className="w-full border border-stone-300 rounded-lg px-3 py-2 text-sm mb-4 focus:outline-none focus:ring-2 focus:ring-gold"
-      />
+      />}
 
-      <div className="flex flex-col sm:flex-row gap-3">
-        <button onClick={() => handleDecision('approved')} className="bg-emerald-600 text-white rounded-lg px-5 py-2.5 text-sm font-medium hover:bg-emerald-700">
+      {['supervisor', 'admin'].includes(user?.role) && <div className="flex flex-col sm:flex-row gap-3">
+        <button onClick={() => handleDecision('approved')} disabled={hasUnresolvedRejectedDocuments(task.documents)} className="bg-emerald-600 text-white rounded-lg px-5 py-2.5 text-sm font-medium hover:bg-emerald-700 disabled:opacity-40 disabled:cursor-not-allowed">
           Approve
         </button>
         <button
@@ -82,8 +108,11 @@ export default function ReviewTask() {
         >
           Send Back for Rework
         </button>
-      </div>
-      {!comments && <p className="text-xs text-stone-400 mt-2">Add a comment to explain what needs fixing before sending back.</p>}
+      </div>}
+      {user?.role === 'operations' && <p className="text-xs text-stone-400 mt-3">You can review documents here. A supervisor or admin completes the task decision.</p>}
+      {hasUnresolvedRejectedDocuments(task.documents) && <p className="text-xs text-rose-600 mt-2">A rejected document needs an uploaded replacement, and that replacement must be accepted before you can approve.</p>}
+      {decisionError && <p className="text-xs text-rose-600 mt-2" role="alert">{decisionError}</p>}
+      {['supervisor', 'admin'].includes(user?.role) && !comments && <p className="text-xs text-stone-400 mt-2">Add a comment to explain what needs fixing before sending back.</p>}
     </div>
   );
 }

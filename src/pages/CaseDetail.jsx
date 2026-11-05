@@ -4,6 +4,7 @@ import { useParams, Link } from 'react-router-dom';
 import api from '../api/client';
 import StatusBadge from '../components/StatusBadge';
 import ClaimBlock from '../components/ClaimBlock';
+import TaskDocuments from '../components/TaskDocuments';
 import { useAuth } from '../context/AuthContext';
 
 const PENDING_REASONS = [
@@ -56,7 +57,7 @@ export default function CaseDetail() {
     if (['assigned', 'in_progress', 'needs_rework'].includes(task.status) && user.role === 'verifier') {
       actions.push(<Link key="work" to={`/tasks/${task._id}/verify`} className="text-xs text-gold hover:underline">{task.status === 'needs_rework' ? 'Rework →' : 'Work on this →'}</Link>);
     }
-    if (task.status === 'awaiting_review' && ['supervisor', 'admin'].includes(user.role)) {
+    if (task.status === 'awaiting_review' && ['operations', 'supervisor', 'admin'].includes(user.role)) {
       actions.push(<Link key="review" to={`/tasks/${task._id}/review`} className="text-xs text-gold hover:underline">Review →</Link>);
     }
     if (['assigned', 'in_progress', 'awaiting_information', 'awaiting_response'].includes(task.status) && ['operations', 'verifier', 'admin'].includes(user.role)) {
@@ -110,6 +111,9 @@ export default function CaseDetail() {
               </div>
 
               <ClaimBlock task={t} />
+              <div className="mt-3">
+                <TaskDocuments task={t} />
+              </div>
 
               {checklistTotal > 0 && (
                 <div className="text-xs text-stone-500 mb-2">Checklist: {checklistDone}/{checklistTotal} complete</div>

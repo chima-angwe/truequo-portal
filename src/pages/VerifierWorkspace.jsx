@@ -1,7 +1,70 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import ClaimBlock from "../components/ClaimBlock";
+import TaskDocuments from "../components/TaskDocuments";
 import api from "../api/client";
+
+const REQUEST_LETTER_TEMPLATE = `Date: {{date}}
+Reference: {{caseNumber}}
+
+Dear {{recipient}},
+
+We are conducting a background verification for {{candidateName}} and would appreciate your assistance in confirming the information below. Please respond through your usual official channel and let us know if you need further information.
+
+{{claimDetails}}
+
+Thank you for your time and assistance.
+
+Yours faithfully,
+[Your name and title]
+[Your company name]
+[Contact email/phone]`;
+
+function claimValue(task, label) {
+  return task.claim?.find((item) => item.label.toLowerCase() === label.toLowerCase())?.value || '';
+}
+
+function recipientForTask(task) {
+  if (task.type === 'employment') return claimValue(task, 'Employer');
+  if (task.type === 'education') return claimValue(task, 'Institution');
+  return claimValue(task, 'Referee Name');
+}
+
+function requestLetterForTask(task) {
+  const claimDetails = {
+    employment: [
+      `Employer: ${claimValue(task, 'Employer')}`,
+      `Role: ${claimValue(task, 'Position')}`,
+      `Dates: ${claimValue(task, 'Start Date')} to ${claimValue(task, 'End Date')}`,
+    ],
+    education: [
+      `Institution: ${claimValue(task, 'Institution')}`,
+      `Qualification: ${claimValue(task, 'Qualification')}`,
+      `Graduation year: ${claimValue(task, 'Graduation Year')}`,
+    ],
+    reference: [
+      `Referee: ${claimValue(task, 'Referee Name')}`,
+      `Relationship: ${claimValue(task, 'Referee Relationship')}`,
+      `Contact: ${claimValue(task, 'Referee Contact')}`,
+    ],
+  }[task.type] || [];
+
+  const values = {
+    date: new Date().toLocaleDateString(),
+    caseNumber: task.case?.caseNumber || '',
+    recipient: recipientForTask(task),
+    candidateName: task.case?.candidate?.name || '',
+    claimDetails: claimDetails.filter((line) => !line.endsWith(': ')).join('\n'),
+  };
+  return REQUEST_LETTER_TEMPLATE.replace(/{{(\w+)}}/g, (_, key) => values[key] || '');
+}
+
+function defaultFollowUpDate() {
+  const date = new Date();
+  date.setDate(date.getDate() + 5);
+  const local = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
+  return local.toISOString().slice(0, 10);
+}
 
 export default function VerifierWorkspace() {
   const { taskId } = useParams();
@@ -16,10 +79,16 @@ export default function VerifierWorkspace() {
     notes: "",
   });
   const [evidence, setEvidence] = useState({ label: "", note: "" });
+  const [letterOpen, setLetterOpen] = useState(false);
+  const [letterText, setLetterText] = useState('');
+  const [followUpDate, setFollowUpDate] = useState(defaultFollowUpDate);
+  const [letterMessage, setLetterMessage] = useState('');
+  const [letterSending, setLetterSending] = useState(false);
 
   useEffect(() => {
     api.get(`/tasks/${taskId}`).then((res) => {
       setTask(res.data);
+      setLetterText(requestLetterForTask(res.data));
       if (res.data.findings) {
         setForm({
           contactPerson: res.data.findings.contactPerson || "",
@@ -59,6 +128,52 @@ export default function VerifierWorkspace() {
     setEvidence({ label: "", note: "" });
   }
 
+  async function markLetterSent() {
+    const recipient = recipientForTask(task);
+    if (!recipient) {
+      setLetterMessage('Add the employer, institution or referee to the claim before marking the request as sent.');
+      return;
+    }
+    if (!followUpDate) {
+      setLetterMessage('Choose a follow-up date.');
+      return;
+    }
+    setLetterSending(true);
+    setLetterMessage('');
+    try {
+      const reason = task.type === 'employment' ? 'awaiting_employer' : task.type === 'education' ? 'awaiting_institution' : 'external_partner_response';
+      const externalPartyType = task.type === 'employment' ? 'previous_employer' : task.type === 'education' ? 'institution' : 'external_partner';
+      const response = await api.patch(`/tasks/${taskId}/pending`, {
+        reason,
+        note: 'Request letter sent; awaiting response from the external party.',
+        nextFollowUpDate: new Date(`${followUpDate}T12:00:00`).toISOString(),
+        externalPartyName: recipient,
+        externalPartyType,
+        requestLetterSent: true,
+      });
+      const refreshed = await api.get(`/tasks/${taskId}`);
+      setTask(refreshed.data);
+      setLetterMessage(`Request letter marked as sent to ${recipient}.`);
+    } catch (error) {
+      setLetterMessage(error.response?.data?.error || 'Unable to mark the letter as sent. Please try again.');
+    } finally {
+      setLetterSending(false);
+    }
+  }
+
+  async function copyLetter() {
+    try {
+      await navigator.clipboard.writeText(letterText);
+      setLetterMessage('Letter copied to clipboard.');
+    } catch {
+      setLetterMessage('Clipboard access is unavailable in this browser. Select and copy the letter text.');
+    }
+  }
+
+  function printLetter() {
+    window.print();
+  }
+
   async function handleSubmit(e) {
     e.preventDefault();
     const res = await api.patch(`/tasks/${taskId}/submit`, {
@@ -85,6 +200,32 @@ export default function VerifierWorkspace() {
         task={task}
         title="What was claimed — check this against what you find"
       />
+
+      {['employment', 'education', 'reference'].includes(task.type) && (
+        <section className="bg-white border border-stone-200 rounded-xl p-4 mb-4">
+          <div className="flex items-center justify-between gap-3">
+            <div><h2 className="text-sm font-medium text-ink">Request letter</h2><p className="text-xs text-stone-400 mt-1">Prepare a letter to the employer, school or referee. Nothing is sent by TrueQuo.</p></div>
+            <button type="button" onClick={() => { setLetterOpen((open) => !open); setLetterMessage(''); }} className="text-xs bg-stone-100 px-3 py-2 rounded-lg hover:bg-stone-200">{letterOpen ? 'Close' : 'Generate request letter'}</button>
+          </div>
+          {letterOpen && (
+            <div className="mt-4 space-y-3">
+              <textarea value={letterText} onChange={(event) => setLetterText(event.target.value)} rows={16} className="w-full border border-stone-300 rounded-lg px-3 py-2 text-sm leading-6 focus:outline-none focus:ring-2 focus:ring-gold" aria-label="Editable request letter" />
+              <pre className="request-letter-print hidden">{letterText}</pre>
+              <style>{`@media print { body * { visibility: hidden !important; } .request-letter-print, .request-letter-print * { visibility: visible !important; } .request-letter-print { display: block !important; position: absolute; left: 0; top: 0; width: 100%; padding: 24px; color: #111; background: white; font: 12pt/1.6 Arial, sans-serif; white-space: pre-wrap; } }`}</style>
+              <div className="flex flex-wrap gap-2">
+                <button type="button" onClick={copyLetter} className="text-xs bg-stone-100 px-3 py-2 rounded-lg hover:bg-stone-200">Copy to clipboard</button>
+                <button type="button" onClick={printLetter} className="text-xs bg-stone-100 px-3 py-2 rounded-lg hover:bg-stone-200">Print</button>
+              </div>
+              <div className="border-t border-stone-100 pt-3 space-y-2">
+                <p className="text-xs font-medium text-stone-600">After you send the letter outside TrueQuo</p>
+                <label className="block text-xs text-stone-500">Next follow-up date<input type="date" value={followUpDate} onChange={(event) => setFollowUpDate(event.target.value)} className="block mt-1 border border-stone-300 rounded-lg px-2.5 py-1.5 text-xs" /></label>
+                <button type="button" disabled={letterSending} onClick={markLetterSent} className="bg-ink text-paper text-xs px-3 py-2 rounded-lg disabled:opacity-50">{letterSending ? 'Saving…' : 'Mark as sent'}</button>
+              </div>
+              {letterMessage && <p className="text-xs text-stone-500" role="status">{letterMessage}</p>}
+            </div>
+          )}
+        </section>
+      )}
 
       {reworkNote && (
         <div className="bg-rose-50 border border-rose-200 rounded-xl p-4 mb-4">
@@ -121,6 +262,8 @@ export default function VerifierWorkspace() {
           </div>
         </div>
       )}
+
+      <TaskDocuments task={task} canUpload onTaskChange={setTask} />
 
       <div className="bg-white border border-stone-200 rounded-xl p-4 mb-4">
         <div className="text-xs text-stone-400 mb-2">Evidence</div>

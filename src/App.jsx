@@ -44,7 +44,7 @@ export default function App() {
           <Route path="/cases/:id/report" element={<Protected blockedFor={['verifier']}><Report /></Protected>} />
           <Route path="/tasks/:taskId/assign" element={<Protected blockedFor={['client', 'verifier', 'supervisor']}><AssignTask /></Protected>} />
           <Route path="/tasks/:taskId/verify" element={<Protected blockedFor={['client', 'operations', 'admin', 'supervisor']}><VerifierWorkspace /></Protected>} />
-          <Route path="/tasks/:taskId/review" element={<Protected blockedFor={['client', 'verifier', 'operations']}><ReviewTask /></Protected>} />
+          <Route path="/tasks/:taskId/review" element={<Protected blockedFor={['client', 'verifier']}><ReviewTask /></Protected>} />
           <Route path="/my-tasks" element={<Protected blockedFor={['client', 'operations', 'admin', 'supervisor']}><MyTasks /></Protected>} />
           <Route path="/reviews" element={<Protected blockedFor={['client', 'verifier', 'operations']}><ReviewQueue /></Protected>} />
         </Routes>
