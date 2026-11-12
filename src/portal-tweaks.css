@@ -29,5 +29,17 @@
 .portal-main .action-panel input,.portal-main .action-panel select{background:#fffdf8}
 .portal-main .page-heading .bg-ink{box-shadow:0 5px 14px #11111418}
 .portal-main .page-heading .bg-ink:hover{box-shadow:0 7px 18px #11111425}
+.loading-page{width:100%;max-width:1440px;margin-inline:auto;animation:loading-enter .24s ease-out both}
+.loading-card{padding:18px;border:1px solid #e7e3da;border-radius:12px;background:#fffdf8;box-shadow:0 4px 18px #11111406}
+.loading-skeleton{position:relative;overflow:hidden;background:#e9e8e1}
+.loading-skeleton:after{content:"";position:absolute;inset:0;transform:translateX(-100%);background:linear-gradient(90deg,transparent,#ffffff9c,transparent);animation:loading-shimmer 1.35s ease-in-out infinite}
+.loading-spinner{display:inline-block;flex:none;border-radius:999px;border-color:#506bff40;border-top-color:#506bff;animation:loading-spin .75s linear infinite}
+.loading-table{overflow:hidden;border:1px solid #e7e3da;border-radius:12px;background:#fffdf8}
+.loading-button{display:inline-flex;align-items:center;justify-content:center;gap:9px}
+.loading-error{border:1px solid #efc8c2;border-radius:9px;background:#fff4f1;padding:12px;color:#9a3d2a;font-size:12px}
+@keyframes loading-shimmer{100%{transform:translateX(100%)}}
+@keyframes loading-spin{to{transform:rotate(360deg)}}
+@keyframes loading-enter{from{opacity:.5;transform:translateY(3px)}to{opacity:1;transform:translateY(0)}}
+@media(prefers-reduced-motion:reduce){.loading-skeleton:after,.loading-spinner{animation:none}.loading-page{animation:none}}
 @media(max-width:520px){.portal-main .stat-primary{min-height:112px;padding:15px}.portal-main .stat-primary .text-4xl{font-size:1.8rem}.portal-main .page-heading{margin-bottom:20px}}
 @media(min-width:1024px){.layout-root{flex-direction:row}.layout-root>.layout-sidebar{position:sticky;inset-block-start:0;inset-block-end:auto;align-self:flex-start;flex:0 0 264px;width:264px;height:100vh;height:100dvh;max-height:100vh;max-height:100dvh;overflow:hidden}.portal-main{width:auto;height:100vh;height:100dvh;min-height:0;flex:1 1 0%;overflow-x:hidden;overflow-y:auto}.layout-mobile-header{display:none}}

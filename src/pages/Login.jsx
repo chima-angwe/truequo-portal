@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import BrandWordmark from '../components/BrandMark';
+import { Spinner } from '../components/LoadingFeedback';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -40,7 +41,7 @@ export default function Login() {
           <div className="login-field"><label htmlFor="email">Work email</label><input id="email" type="email" autoComplete="username" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@company.com" /></div>
           <div className="login-field"><label htmlFor="password">Password</label><input id="password" type="password" autoComplete="current-password" required value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Enter your password" /></div>
           {error && <div className="login-error" role="alert">{error}</div>}
-          <button type="submit" disabled={loading} className="login-submit">{loading ? 'Signing in…' : 'Sign in'}</button>
+          <button type="submit" disabled={loading} className="login-submit loading-button">{loading ? <Spinner label="Signing in…" className="text-white" /> : 'Sign in'}</button>
           <div className="login-helper">Your access and workspace are based on your account role.</div>
         </form>
       </section>

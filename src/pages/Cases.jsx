@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import api from '../api/client';
 import StatusBadge from '../components/StatusBadge';
 import { useAuth } from '../context/AuthContext';
+import { TableSkeleton } from '../components/LoadingFeedback';
 
 const FILTERS = ['all', 'pending', 'in_progress', 'awaiting_review', 'needs_rework', 'escalated', 'completed'];
 
@@ -32,11 +33,10 @@ export default function Cases() {
         <label className="sr-only" htmlFor="case-search">Search cases</label><input id="case-search" type="search" placeholder="Search case, candidate or client…" value={search} onChange={(e) => setSearch(e.target.value)} className="w-full rounded-lg border px-3 py-2.5 text-xs xl:w-72 xl:shrink-0" />
       </div>
       {error && <div role="alert" className="mb-4 rounded-lg border border-red-200 bg-red-50 p-3 text-xs text-red-700">{error}</div>}
-      <div className="overflow-hidden rounded-xl border border-stone-200 bg-white"><div className="overflow-x-auto"><table className="case-table w-full text-sm"><thead><tr className="text-left"><th className="px-4 py-3 sm:px-5">Case</th><th className="px-4 py-3 sm:px-5">Candidate</th><th className="px-4 py-3 sm:px-5">Checks</th><th className="px-4 py-3 sm:px-5">Client</th><th className="px-4 py-3 sm:px-5">Due</th><th className="px-4 py-3 sm:px-5">Status</th></tr></thead><tbody>
+      {loading ? <TableSkeleton rows={6} columns={6} /> : <div className="overflow-hidden rounded-xl border border-stone-200 bg-white"><div className="overflow-x-auto"><table className="case-table w-full text-sm"><thead><tr className="text-left"><th className="px-4 py-3 sm:px-5">Case</th><th className="px-4 py-3 sm:px-5">Candidate</th><th className="px-4 py-3 sm:px-5">Checks</th><th className="px-4 py-3 sm:px-5">Client</th><th className="px-4 py-3 sm:px-5">Due</th><th className="px-4 py-3 sm:px-5">Status</th></tr></thead><tbody>
         {visible.map((c) => <tr key={c._id} className="border-b border-stone-100 hover:bg-stone-50"><td className="case-number px-4 py-4 sm:px-5"><Link to={`/cases/${c._id}`}>{c.caseNumber}</Link></td><td className="candidate-cell px-4 py-4 sm:px-5">{c.candidate?.name || '—'}</td><td className="checking-cell px-4 py-3 sm:px-5">{(c.summary || []).length ? c.summary.map((t, i) => <div key={`${t.type}-${i}`}><span className="font-bold capitalize text-stone-700">{t.type}</span>{t.headline && <span className="text-stone-500"> · {t.headline}</span>}</div>) : <span className="text-stone-400">No check details</span>}</td><td className="client-cell px-4 py-4 text-stone-500 sm:px-5">{c.client?.name || '—'}</td><td className="due-cell px-4 py-4 text-stone-500 sm:px-5">{c.dueDate ? new Date(c.dueDate).toLocaleDateString() : '—'}</td><td className="status-cell px-4 py-4 sm:px-5"><StatusBadge status={c.status} /></td></tr>)}
         {!loading && visible.length === 0 && <tr><td colSpan="6" className="px-5 py-12 text-center"><div className="font-bold text-ink">No cases found</div><div className="mt-1 text-xs text-stone-500">Try another search or status filter.</div></td></tr>}
-        {loading && <tr><td colSpan="6" className="px-5 py-12 text-center text-xs text-stone-500">Loading cases…</td></tr>}
-      </tbody></table></div></div>
+      </tbody></table></div></div>}
     </div>
   );
 }

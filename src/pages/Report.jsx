@@ -1,16 +1,19 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import api from '../api/client';
+import { PageSkeleton } from '../components/LoadingFeedback';
 
 export default function Report() {
   const { id } = useParams();
   const [report, setReport] = useState(null);
+  const [error, setError] = useState('');
 
   useEffect(() => {
-    api.get(`/reviews/report/${id}`).then((res) => setReport(res.data));
+    api.get(`/reviews/report/${id}`).then((res) => setReport(res.data)).catch((err) => setError(err.response?.data?.error || 'The report could not be loaded. Please try again.'));
   }, [id]);
 
-  if (!report) return <div className="p-4 sm:p-6 lg:p-8 text-stone-400 text-sm">Loading…</div>;
+  if (error) return <div className="p-4 sm:p-6 lg:p-8 max-w-2xl"><div role="alert" className="loading-error">{error}</div></div>;
+  if (!report) return <PageSkeleton variant="detail" title="Loading verification report" />;
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-2xl">

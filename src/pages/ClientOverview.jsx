@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import api from '../api/client';
 import StatusBadge from '../components/StatusBadge';
 import { useAuth } from '../context/AuthContext';
+import { PageSkeleton } from '../components/LoadingFeedback';
 
 export default function ClientOverview() {
   const [cases, setCases] = useState(null);
@@ -10,7 +11,7 @@ export default function ClientOverview() {
   const { user } = useAuth();
   useEffect(() => { api.get('/cases').then((res) => setCases(res.data)).catch((err) => setError(err.response?.data?.error || 'Your overview could not be loaded.')); }, []);
   if (error) return <div className="empty-state" role="alert">{error}</div>;
-  if (!cases) return <div className="portal-loading">Loading your cases…</div>;
+  if (!cases) return <PageSkeleton variant="dashboard" title="Loading your client overview" />;
   const counts = { active: cases.filter((c) => c.status !== 'completed').length, inProgress: cases.filter((c) => c.status === 'in_progress').length, review: cases.filter((c) => c.status === 'awaiting_review').length, completed: cases.filter((c) => c.status === 'completed').length };
   const cards = [['Open requests', counts.active, '#506bff'], ['In progress', counts.inProgress, '#506bff'], ['Awaiting review', counts.review, '#00a963'], ['Completed', counts.completed, '#00a963']];
   return <div className="max-w-6xl"><section className="page-heading"><div className="page-heading-copy"><div className="page-eyebrow">CLIENT WORKSPACE</div><h1 className="mt-2">Welcome, {user?.name?.split(' ')[0] || 'back'}</h1><p className="page-subtitle">A straightforward view of your verification requests and their progress.</p></div><Link to="/cases/new" className="inline-flex shrink-0 items-center justify-center rounded-lg bg-ink px-4 py-2.5 text-xs font-bold text-white">+ New request</Link></section>

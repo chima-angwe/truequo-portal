@@ -5,6 +5,7 @@ import api from '../api/client';
 import StatusBadge from '../components/StatusBadge';
 import ClaimBlock from '../components/ClaimBlock';
 import TaskDocuments from '../components/TaskDocuments';
+import { PageSkeleton, Spinner } from '../components/LoadingFeedback';
 import { useAuth } from '../context/AuthContext';
 
 const PENDING_REASONS = [
@@ -19,34 +20,55 @@ export default function CaseDetail() {
   const [openForm, setOpenForm] = useState(null); // { taskId, type: 'pending' | 'escalate' }
   const [pendingForm, setPendingForm] = useState({ reason: '', note: '', nextFollowUpDate: '' });
   const [escalateForm, setEscalateForm] = useState({ description: '', assignedTeam: '', nextAction: '' });
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
+  const [busyAction, setBusyAction] = useState('');
+  const [actionError, setActionError] = useState('');
   const { user } = useAuth();
 
-  function load() {
-    api.get(`/cases/${id}`).then((res) => setData(res.data));
+  async function load() {
+    setLoading(true);
+    setLoadError('');
+    try {
+      const res = await api.get(`/cases/${id}`);
+      setData(res.data);
+    } catch (error) {
+      setLoadError(error.response?.data?.error || 'This case could not be loaded. Please try again.');
+    } finally { setLoading(false); }
   }
 
   useEffect(() => { load(); }, [id]);
 
-  if (!data) return <div className="p-4 sm:p-6 lg:p-8 text-stone-400 text-sm">Loading…</div>;
+  if (loading && !data) return <PageSkeleton variant="detail" title="Loading case details" />;
+  if (loadError && !data) return <div className="p-4 sm:p-6 lg:p-8 max-w-xl"><div role="alert" className="loading-error">{loadError}</div></div>;
+  if (!data) return null;
   const { case: c, tasks } = data;
 
   async function submitPending(taskId) {
-    await api.patch(`/tasks/${taskId}/pending`, pendingForm);
-    setOpenForm(null);
-    setPendingForm({ reason: '', note: '', nextFollowUpDate: '' });
-    load();
+    setBusyAction(`pending:${taskId}`); setActionError('');
+    try {
+      await api.patch(`/tasks/${taskId}/pending`, pendingForm);
+      setOpenForm(null); setPendingForm({ reason: '', note: '', nextFollowUpDate: '' });
+      await load();
+    } catch (error) { setActionError(error.response?.data?.error || 'Could not update this task. Please try again.'); }
+    finally { setBusyAction(''); }
   }
 
   async function submitEscalate(taskId) {
-    await api.patch(`/tasks/${taskId}/escalate`, escalateForm);
-    setOpenForm(null);
-    setEscalateForm({ description: '', assignedTeam: '', nextAction: '' });
-    load();
+    setBusyAction(`escalate:${taskId}`); setActionError('');
+    try {
+      await api.patch(`/tasks/${taskId}/escalate`, escalateForm);
+      setOpenForm(null); setEscalateForm({ description: '', assignedTeam: '', nextAction: '' });
+      await load();
+    } catch (error) { setActionError(error.response?.data?.error || 'Could not escalate this task. Please try again.'); }
+    finally { setBusyAction(''); }
   }
 
   async function resolveEscalation(taskId) {
-    await api.patch(`/tasks/${taskId}/resolve-escalation`);
-    load();
+    setBusyAction(`resolve:${taskId}`); setActionError('');
+    try { await api.patch(`/tasks/${taskId}/resolve-escalation`); await load(); }
+    catch (error) { setActionError(error.response?.data?.error || 'Could not resolve this issue. Please try again.'); }
+    finally { setBusyAction(''); }
   }
 
   function actionFor(task) {
@@ -67,7 +89,7 @@ export default function CaseDetail() {
       actions.push(<button key="escalate" onClick={() => setOpenForm({ taskId: task._id, type: 'escalate' })} className="text-xs text-red-500 hover:underline">Flag Issue</button>);
     }
     if (task.status === 'escalated' && ['operations', 'admin', 'supervisor'].includes(user.role)) {
-      actions.push(<button key="resolve" onClick={() => resolveEscalation(task._id)} className="text-xs text-emerald-600 hover:underline">Resolve</button>);
+      actions.push(<button key="resolve" disabled={Boolean(busyAction)} onClick={() => resolveEscalation(task._id)} className="text-xs text-emerald-600 hover:underline disabled:opacity-50">{busyAction === `resolve:${task._id}` ? <Spinner label="Resolving…" /> : 'Resolve'}</button>);
     }
     return actions;
   }
@@ -92,6 +114,7 @@ export default function CaseDetail() {
       </div>
 
       <div className="space-y-4">
+        {actionError && <div className="loading-error" role="alert">{actionError}</div>}
         {tasks.map((t) => {
           const checklistDone = t.checklist?.filter((i) => i.done).length || 0;
           const checklistTotal = t.checklist?.length || 0;
@@ -167,7 +190,7 @@ export default function CaseDetail() {
                     className="w-full border border-stone-300 rounded-lg px-2.5 py-1.5 text-xs"
                   />
                   <div className="flex gap-2">
-                    <button onClick={() => submitPending(t._id)} disabled={!pendingForm.reason} className="bg-ink text-paper text-xs px-3 py-1.5 rounded-lg disabled:opacity-40">Save</button>
+                    <button onClick={() => submitPending(t._id)} disabled={!pendingForm.reason || Boolean(busyAction)} className="bg-ink text-paper text-xs px-3 py-1.5 rounded-lg disabled:opacity-40">{busyAction === `pending:${t._id}` ? <Spinner label="Saving…" className="text-paper" /> : 'Save'}</button>
                     <button onClick={() => setOpenForm(null)} className="text-xs text-stone-500">Cancel</button>
                   </div>
                 </div>
@@ -191,7 +214,7 @@ export default function CaseDetail() {
                     className="w-full border border-stone-300 rounded-lg px-2.5 py-1.5 text-xs"
                   />
                   <div className="flex gap-2">
-                    <button onClick={() => submitEscalate(t._id)} disabled={!escalateForm.description} className="bg-red-600 text-white text-xs px-3 py-1.5 rounded-lg disabled:opacity-40">Escalate</button>
+                    <button onClick={() => submitEscalate(t._id)} disabled={!escalateForm.description || Boolean(busyAction)} className="bg-red-600 text-white text-xs px-3 py-1.5 rounded-lg disabled:opacity-40">{busyAction === `escalate:${t._id}` ? <Spinner label="Escalating…" className="text-white" /> : 'Escalate'}</button>
                     <button onClick={() => setOpenForm(null)} className="text-xs text-stone-500">Cancel</button>
                   </div>
                 </div>

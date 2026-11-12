@@ -4,6 +4,7 @@ import ClaimBlock from '../components/ClaimBlock';
 import TaskDocuments from '../components/TaskDocuments';
 import api from '../api/client';
 import { useAuth } from '../context/AuthContext';
+import { PageSkeleton, Spinner } from '../components/LoadingFeedback';
 
 function hasUnresolvedRejectedDocuments(documents = []) {
   return documents.some((document) => {
@@ -25,24 +26,30 @@ export default function ReviewTask() {
   const [task, setTask] = useState(null);
   const [comments, setComments] = useState('');
   const [decisionError, setDecisionError] = useState('');
+  const [loadError, setLoadError] = useState('');
+  const [decisionLoading, setDecisionLoading] = useState('');
   const navigate = useNavigate();
   const { user } = useAuth();
 
   useEffect(() => {
-    api.get(`/tasks/${taskId}`).then((res) => setTask(res.data));
+    api.get(`/tasks/${taskId}`).then((res) => setTask(res.data)).catch((error) => setLoadError(error.response?.data?.error || 'This review could not be loaded. Please try again.'));
   }, [taskId]);
 
   async function handleDecision(status) {
     setDecisionError('');
+    setDecisionLoading(status);
     try {
       const res = await api.post(`/reviews/${taskId}`, { status, comments });
       navigate(`/cases/${res.data.task.case}`);
     } catch (error) {
       setDecisionError(error.response?.data?.error || 'Unable to save this review. Please try again.');
+    } finally {
+      setDecisionLoading('');
     }
   }
 
-  if (!task) return <div className="p-4 sm:p-6 lg:p-8 text-stone-400 text-sm">Loading…</div>;
+  if (loadError) return <div className="p-4 sm:p-6 lg:p-8 max-w-xl"><div role="alert" className="loading-error">{loadError}</div></div>;
+  if (!task) return <PageSkeleton variant="detail" title="Loading verification review" />;
 
   const checklistDone = task.checklist?.filter((i) => i.done).length || 0;
   const checklistTotal = task.checklist?.length || 0;
@@ -98,15 +105,15 @@ export default function ReviewTask() {
       />}
 
       {['supervisor', 'admin'].includes(user?.role) && <div className="flex flex-col sm:flex-row gap-3">
-        <button onClick={() => handleDecision('approved')} disabled={hasUnresolvedRejectedDocuments(task.documents)} className="bg-emerald-600 text-white rounded-lg px-5 py-2.5 text-sm font-medium hover:bg-emerald-700 disabled:opacity-40 disabled:cursor-not-allowed">
-          Approve
+        <button onClick={() => handleDecision('approved')} disabled={Boolean(decisionLoading) || hasUnresolvedRejectedDocuments(task.documents)} className="bg-emerald-600 text-white rounded-lg px-5 py-2.5 text-sm font-medium hover:bg-emerald-700 disabled:opacity-40 disabled:cursor-not-allowed">
+          {decisionLoading === 'approved' ? <Spinner label="Approving…" className="text-white" /> : 'Approve'}
         </button>
         <button
           onClick={() => handleDecision('needs_rework')}
-          disabled={!comments}
+          disabled={!comments || Boolean(decisionLoading)}
           className="bg-white border border-rose-300 text-rose-600 rounded-lg px-5 py-2.5 text-sm font-medium hover:bg-rose-50 disabled:opacity-40 disabled:cursor-not-allowed"
         >
-          Send Back for Rework
+          {decisionLoading === 'needs_rework' ? <Spinner label="Sending back…" /> : 'Send Back for Rework'}
         </button>
       </div>}
       {user?.role === 'operations' && <p className="text-xs text-stone-400 mt-3">You can review documents here. A supervisor or admin completes the task decision.</p>}

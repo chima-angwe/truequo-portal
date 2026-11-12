@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../api/client';
 import { useAuth } from '../context/AuthContext';
+import { Spinner } from '../components/LoadingFeedback';
 
 const CHECK_TYPES = ['employment', 'education', 'identity', 'address', 'reference'];
 
@@ -23,17 +24,20 @@ export default function NewCase() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [error, setError] = useState('');
+  const [clientsLoading, setClientsLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     if (user?.role === 'client') {
       setForm((f) => ({ ...f, client: user.organization || '' }));
+      setClientsLoading(false);
       return;
     }
     api.get('/cases').then((res) => {
       const unique = new Map();
       res.data.forEach((c) => unique.set(c.client._id, c.client));
       setClients([...unique.values()]);
-    });
+    }).catch(() => setError('Client organizations could not be loaded. Please refresh to try again.')).finally(() => setClientsLoading(false));
   }, [user]);
 
   function toggleCheck(type) {
@@ -54,9 +58,11 @@ export default function NewCase() {
     e.preventDefault();
     try {
       setError('');
+      setSubmitting(true);
       const res = await api.post('/cases', { ...form, claims });
       navigate(`/cases/${res.data.case._id}`);
     } catch (err) { setError(err.response?.data?.error || 'Request could not be submitted. Please try again.'); }
+    finally { setSubmitting(false); }
   }
 
   return (
@@ -83,11 +89,11 @@ export default function NewCase() {
         {user?.role !== 'client' ? <div>
           <label className="text-xs font-medium text-stone-500">Client</label>
           <select
-            required value={form.client}
+            required value={form.client} disabled={clientsLoading || submitting}
             onChange={(e) => setForm({ ...form, client: e.target.value })}
             className="mt-1 w-full border border-stone-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gold"
           >
-            <option value="">Select client…</option>
+            <option value="">{clientsLoading ? 'Loading clients…' : 'Select client…'}</option>
             {clients.map((c) => <option key={c._id} value={c._id}>{c.name}</option>)}
           </select>
         </div> : <div className="rounded-lg border border-stone-200 bg-stone-50 px-3 py-2.5 text-xs text-stone-600">Requesting organization: <strong>{user?.organizationName || 'Your organization'}</strong></div>}
@@ -141,10 +147,10 @@ export default function NewCase() {
         </div>
         {error && <div role="alert" className="rounded-lg border border-red-200 bg-red-50 p-3 text-xs text-red-700">{error}</div>}
         <button
-          type="submit" disabled={form.checks.length === 0}
+          type="submit" disabled={form.checks.length === 0 || submitting || clientsLoading}
           className="bg-ink text-paper rounded-lg px-5 py-2.5 text-sm font-medium disabled:opacity-40 hover:bg-stone-800"
         >
-          Submit Request
+          {submitting ? <Spinner label="Submitting request…" className="text-paper" /> : 'Submit Request'}
         </button>
       </form>
     </div>

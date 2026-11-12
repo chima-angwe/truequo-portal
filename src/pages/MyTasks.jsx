@@ -1,18 +1,21 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../api/client';
+import { PageSkeleton } from '../components/LoadingFeedback';
 
 function headline(t) {
   return (t.claim || []).map((c) => c.value).filter(Boolean).slice(0, 2).join(' · ');
 }
 
 export default function MyTasks() {
-  const [tasks, setTasks] = useState([]);
+  const [tasks, setTasks] = useState(null);
   const [error, setError] = useState('');
 
   useEffect(() => {
     api.get('/tasks/my/assignments').then((res) => setTasks(res.data)).catch(() => setError('Assignments could not be loaded. Please refresh to try again.'));
   }, []);
+
+  if (!tasks && !error) return <PageSkeleton variant="cards" title="Loading your assignments" />;
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-2xl">
@@ -20,7 +23,7 @@ export default function MyTasks() {
       {error && <div role="alert" className="empty-state">{error}</div>}
 
       <div className="space-y-3">
-        {tasks.map((t) => (
+        {tasks?.map((t) => (
           <Link
             key={t._id} to={`/tasks/${t._id}/verify`}
             className="data-panel block p-4 transition hover:border-gold sm:p-5"
@@ -37,7 +40,7 @@ export default function MyTasks() {
             </div>
           </Link>
         ))}
-        {tasks.length === 0 && (
+        {tasks?.length === 0 && (
           <div className="empty-state">No assignments right now. New work will appear here when it is assigned to you.</div>
         )}
       </div>

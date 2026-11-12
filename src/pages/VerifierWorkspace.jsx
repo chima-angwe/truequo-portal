@@ -3,6 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import ClaimBlock from "../components/ClaimBlock";
 import TaskDocuments from "../components/TaskDocuments";
 import api from "../api/client";
+import { PageSkeleton, Spinner } from "../components/LoadingFeedback";
 
 const REQUEST_LETTER_TEMPLATE = `Date: {{date}}
 Reference: {{caseNumber}}
@@ -84,6 +85,10 @@ export default function VerifierWorkspace() {
   const [followUpDate, setFollowUpDate] = useState(defaultFollowUpDate);
   const [letterMessage, setLetterMessage] = useState('');
   const [letterSending, setLetterSending] = useState(false);
+  const [loadError, setLoadError] = useState('');
+  const [formLoading, setFormLoading] = useState(false);
+  const [actionLoading, setActionLoading] = useState('');
+  const [actionError, setActionError] = useState('');
 
   useEffect(() => {
     api.get(`/tasks/${taskId}`).then((res) => {
@@ -103,12 +108,12 @@ export default function VerifierWorkspace() {
           notes: res.data.findings.notes || "",
         });
       }
-    });
+    }).catch((error) => setLoadError(error.response?.data?.error || 'This verification task could not be loaded. Please try again.'));
     if (taskId) {
       api.get(`/reviews/task/${taskId}`).then((res) => {
         const lastRejection = res.data.find((r) => r.status === "rejected");
         if (lastRejection) setReworkNote(lastRejection);
-      });
+      }).catch(() => {});
     }
   }, [taskId]);
 
@@ -117,15 +122,18 @@ export default function VerifierWorkspace() {
   }
 
   async function toggleChecklistItem(idx) {
-    const res = await api.patch(`/tasks/${taskId}/checklist/${idx}`);
-    setTask(res.data);
+    setActionLoading(`checklist:${idx}`); setActionError('');
+    try { const res = await api.patch(`/tasks/${taskId}/checklist/${idx}`); setTask(res.data); }
+    catch (error) { setActionError(error.response?.data?.error || 'Could not update the checklist. Please try again.'); }
+    finally { setActionLoading(''); }
   }
 
   async function addEvidence() {
     if (!evidence.label) return;
-    const res = await api.post(`/tasks/${taskId}/evidence`, evidence);
-    setTask(res.data);
-    setEvidence({ label: "", note: "" });
+    setActionLoading('evidence'); setActionError('');
+    try { const res = await api.post(`/tasks/${taskId}/evidence`, evidence); setTask(res.data); setEvidence({ label: "", note: "" }); }
+    catch (error) { setActionError(error.response?.data?.error || 'Could not save this evidence. Please try again.'); }
+    finally { setActionLoading(''); }
   }
 
   async function markLetterSent() {
@@ -176,17 +184,16 @@ export default function VerifierWorkspace() {
 
   async function handleSubmit(e) {
     e.preventDefault();
-    const res = await api.patch(`/tasks/${taskId}/submit`, {
-      ...form,
-      confirmed: form.confirmed === "yes",
-    });
-    navigate(`/cases/${res.data.case}`);
+    setFormLoading(true); setActionError('');
+    try {
+      const res = await api.patch(`/tasks/${taskId}/submit`, { ...form, confirmed: form.confirmed === "yes" });
+      navigate(`/cases/${res.data.case}`);
+    } catch (error) { setActionError(error.response?.data?.error || 'Could not submit this verification. Please try again.'); }
+    finally { setFormLoading(false); }
   }
 
-  if (!task)
-    return (
-      <div className="p-4 sm:p-6 lg:p-8 text-stone-400 text-sm">Loading…</div>
-    );
+  if (!task && loadError) return <div className="p-4 sm:p-6 lg:p-8 max-w-xl"><div role="alert" className="loading-error">{loadError}</div></div>;
+  if (!task) return <PageSkeleton variant="detail" title="Loading verification workspace" />;
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-3xl">
@@ -219,7 +226,7 @@ export default function VerifierWorkspace() {
               <div className="border-t border-stone-100 pt-3 space-y-2">
                 <p className="text-xs font-medium text-stone-600">After you send the letter outside TrueQuo</p>
                 <label className="block text-xs text-stone-500">Next follow-up date<input type="date" value={followUpDate} onChange={(event) => setFollowUpDate(event.target.value)} className="block mt-1 border border-stone-300 rounded-lg px-2.5 py-1.5 text-xs" /></label>
-                <button type="button" disabled={letterSending} onClick={markLetterSent} className="bg-ink text-paper text-xs px-3 py-2 rounded-lg disabled:opacity-50">{letterSending ? 'Saving…' : 'Mark as sent'}</button>
+                <button type="button" disabled={letterSending} onClick={markLetterSent} className="bg-ink text-paper text-xs px-3 py-2 rounded-lg disabled:opacity-50">{letterSending ? <Spinner label="Saving…" className="text-paper" /> : 'Mark as sent'}</button>
               </div>
               {letterMessage && <p className="text-xs text-stone-500" role="status">{letterMessage}</p>}
             </div>
@@ -250,6 +257,7 @@ export default function VerifierWorkspace() {
                   type="checkbox"
                   checked={item.done}
                   onChange={() => toggleChecklistItem(i)}
+                  disabled={Boolean(actionLoading)}
                   className="accent-gold"
                 />
                 <span
@@ -257,6 +265,7 @@ export default function VerifierWorkspace() {
                 >
                   {item.label}
                 </span>
+                {actionLoading === `checklist:${i}` && <Spinner label="Saving checklist" />}
               </label>
             ))}
           </div>
@@ -290,9 +299,10 @@ export default function VerifierWorkspace() {
           <button
             type="button"
             onClick={addEvidence}
+            disabled={!evidence.label || Boolean(actionLoading)}
             className="text-xs bg-stone-100 px-3 py-1.5 rounded-lg hover:bg-stone-200"
           >
-            Add
+            {actionLoading === 'evidence' ? <Spinner label="Saving…" /> : 'Add'}
           </button>
         </div>
       </div>
@@ -301,6 +311,7 @@ export default function VerifierWorkspace() {
         onSubmit={handleSubmit}
         className="bg-white border border-stone-200 rounded-xl p-4 sm:p-6 space-y-4"
       >
+        {actionError && <div className="loading-error" role="alert">{actionError}</div>}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label className="text-xs font-medium text-stone-500">
@@ -373,9 +384,10 @@ export default function VerifierWorkspace() {
 
         <button
           type="submit"
+          disabled={formLoading}
           className="bg-ink text-paper rounded-lg px-5 py-2.5 text-sm font-medium hover:bg-stone-800"
         >
-          {task.reworkCount > 0 ? "Resubmit for Review" : "Submit for Review"}
+          {formLoading ? <Spinner label="Submitting…" className="text-paper" /> : task.reworkCount > 0 ? "Resubmit for Review" : "Submit for Review"}
         </button>
       </form>
     </div>

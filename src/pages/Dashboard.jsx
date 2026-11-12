@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import api from '../api/client';
 import StatusBadge from '../components/StatusBadge';
 import { useAuth } from '../context/AuthContext';
+import { PageSkeleton } from '../components/LoadingFeedback';
 
 export default function Dashboard() {
   const [data, setData] = useState(null);
@@ -10,7 +11,7 @@ export default function Dashboard() {
   const { user } = useAuth();
   useEffect(() => { api.get('/dashboard').then((res) => setData(res.data)).catch(() => setError('We could not load the latest operation summary. Please refresh to try again.')); }, []);
   if (error) return <div className="empty-state" role="alert">{error}</div>;
-  if (!data) return <div className="portal-loading">Loading your operation…</div>;
+  if (!data) return <PageSkeleton variant="dashboard" title="Loading your dashboard" />;
 
   const c = data.counts || {};
   const primary = [

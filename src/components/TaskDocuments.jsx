@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import api from '../api/client';
 import { useAuth } from '../context/AuthContext';
+import { Spinner } from './LoadingFeedback';
 
 const ALLOWED_TYPES = {
   '.pdf': 'application/pdf',
@@ -39,6 +40,7 @@ export default function TaskDocuments({ task, canUpload = false, canReview = fal
   const [error, setError] = useState('');
   const [progress, setProgress] = useState(null);
   const [reviewNotes, setReviewNotes] = useState({});
+  const [activeAction, setActiveAction] = useState('');
 
   useEffect(() => setDocuments(task?.documents || []), [task]);
 
@@ -93,6 +95,7 @@ export default function TaskDocuments({ task, canUpload = false, canReview = fal
 
   async function download(document) {
     setError('');
+    setActiveAction(`download:${document._id}`);
     try {
       const response = await api.get(`/tasks/${task._id}/documents/${document._id}/download`, { responseType: 'blob' });
       const objectUrl = URL.createObjectURL(response.data);
@@ -105,11 +108,12 @@ export default function TaskDocuments({ task, canUpload = false, canReview = fal
       URL.revokeObjectURL(objectUrl);
     } catch (downloadError) {
       setError(getErrorMessage(downloadError));
-    }
+    } finally { setActiveAction(''); }
   }
 
   async function remove(document) {
     setBusy(true);
+    setActiveAction(`delete:${document._id}`);
     setError('');
     try {
       await api.delete(`/tasks/${task._id}/documents/${document._id}`);
@@ -118,6 +122,7 @@ export default function TaskDocuments({ task, canUpload = false, canReview = fal
       setError(getErrorMessage(deleteError));
     } finally {
       setBusy(false);
+      setActiveAction('');
     }
   }
 
@@ -128,6 +133,7 @@ export default function TaskDocuments({ task, canUpload = false, canReview = fal
       return;
     }
     setBusy(true);
+    setActiveAction(`${status}:${document._id}`);
     setError('');
     try {
       await api.patch(`/tasks/${task._id}/documents/${document._id}/review`, { status, note });
@@ -136,6 +142,7 @@ export default function TaskDocuments({ task, canUpload = false, canReview = fal
       setError(getErrorMessage(reviewError));
     } finally {
       setBusy(false);
+      setActiveAction('');
     }
   }
 
@@ -152,7 +159,7 @@ export default function TaskDocuments({ task, canUpload = false, canReview = fal
         </div>
         {canUpload && task.status !== 'approved' && documents.length < MAX_DOCUMENTS && (
           <label className={`cursor-pointer text-xs bg-stone-100 px-3 py-2 rounded-lg hover:bg-stone-200 ${busy ? 'opacity-50 pointer-events-none' : ''}`}>
-            {busy ? 'Uploading…' : 'Add documents'}
+            {busy ? <Spinner label="Uploading…" /> : 'Add documents'}
             <input className="sr-only" type="file" multiple accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" disabled={busy} onChange={handleUpload} />
           </label>
         )}
@@ -179,16 +186,16 @@ export default function TaskDocuments({ task, canUpload = false, canReview = fal
                   {document.replacementFor && <p className="text-[11px] text-stone-400 mt-1">Uploaded as a replacement document.</p>}
                 </div>
                 <div className="flex items-center gap-3 shrink-0">
-                  <button type="button" onClick={() => download(document)} className="text-xs text-gold hover:underline">Download</button>
-                  {roleCanDelete(document) && <button type="button" disabled={busy} onClick={() => remove(document)} className="text-xs text-rose-500 hover:underline disabled:opacity-40">Delete</button>}
+                  <button type="button" disabled={Boolean(activeAction)} onClick={() => download(document)} className="text-xs text-gold hover:underline disabled:opacity-50">{activeAction === `download:${document._id}` ? <Spinner label="Downloading…" /> : 'Download'}</button>
+                  {roleCanDelete(document) && <button type="button" disabled={busy} onClick={() => remove(document)} className="text-xs text-rose-500 hover:underline disabled:opacity-40">{activeAction === `delete:${document._id}` ? <Spinner label="Deleting…" /> : 'Delete'}</button>}
                 </div>
               </div>
               {canReview && document.reviewStatus === 'pending' && (
                 <div className="mt-3 space-y-2">
                   <textarea rows={2} value={reviewNotes[document._id] || ''} onChange={(event) => setReviewNotes((current) => ({ ...current, [document._id]: event.target.value }))} placeholder="Required note if this document needs replacement" className="w-full border border-stone-300 rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-gold" />
                   <div className="flex gap-2">
-                    <button type="button" disabled={busy} onClick={() => review(document, 'accepted')} className="text-xs bg-emerald-600 text-white px-3 py-1.5 rounded-lg disabled:opacity-40">Accept</button>
-                    <button type="button" disabled={busy || !(reviewNotes[document._id] || '').trim()} onClick={() => review(document, 'rejected')} className="text-xs bg-white border border-rose-300 text-rose-600 px-3 py-1.5 rounded-lg disabled:opacity-40">Needs replacement</button>
+                    <button type="button" disabled={busy} onClick={() => review(document, 'accepted')} className="text-xs bg-emerald-600 text-white px-3 py-1.5 rounded-lg disabled:opacity-40">{activeAction === `accepted:${document._id}` ? <Spinner label="Accepting…" className="text-white" /> : 'Accept'}</button>
+                    <button type="button" disabled={busy || !(reviewNotes[document._id] || '').trim()} onClick={() => review(document, 'rejected')} className="text-xs bg-white border border-rose-300 text-rose-600 px-3 py-1.5 rounded-lg disabled:opacity-40">{activeAction === `rejected:${document._id}` ? <Spinner label="Saving…" /> : 'Needs replacement'}</button>
                   </div>
                 </div>
               )}
